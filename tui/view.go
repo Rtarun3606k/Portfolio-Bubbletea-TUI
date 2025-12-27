@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // Styles
@@ -33,105 +32,14 @@ func (m Model) generateConetnt(width int) string {
 	doc := strings.Builder{}
 
 	switch m.ActiveTab {
-	case 0: // Home
-		// doc.WriteString(highlight.Render("WELCOME TO MY TERMINAL") + "\n\n")
-		//
-		// for _, s := range m.Services {
-		// 	title := utils.SafeString(s, "title")
-		// 	price := utils.SafeString(s, "price")
-		//
-		// 	// Wrap title to fit container
-		// 	wrappedTitle := lipgloss.NewStyle().Width(contentWidth).Render(title)
-		// 	doc.WriteString(fmt.Sprintf("• %s  %s\n", wrappedTitle, subtle.Render(price)))
-		// }
-		// githubicon := highlight.Render("  GitHub")
-		// Linkedinicon := highlight.Render("  LinkedIn")
-		//
-		// // 2. Wrap that styled string in the link
-		// github := utils.MakeLink(githubicon, "https://github.com/tarunNayaka")
-		// linkedin := utils.MakeLink(Linkedinicon, "https://github.com/tarunNayaka")
-		//
-		// doc.WriteString("\n" + github + "   ")
-		// doc.WriteString(" " + linkedin + "\n")
+	case 0:
 		return m.renderHome(width)
 
 	case 1: // Projects
-		for _, p := range m.Projects {
-			name := utils.SafeString(p, "title")
-			desc := utils.SafeString(p, "description")
-			github := utils.SafeString(p, "githubUrl")
-			live := utils.SafeString(p, "liveUrl")
+		return m.renderProject(width)
 
-			if github != "" {
-				name += " " + utils.MakeLink("", github)
-			}
-			if live != "" {
-				name += " " + utils.MakeLink("🔗", live)
-			}
-
-			// Wrap description to 100% of the Container Width
-			wrapperDesc := lipgloss.NewStyle().Width(contentWidth).Render(desc)
-
-			doc.WriteString(fmt.Sprintf("%s\n%s\n%s\n%s\n\n", highlight.Render(name), wrapperDesc, subtle.Render(github), subtle.Render(live)))
-		}
-
-	case 2: // Experience
-		for _, e := range m.Experience {
-			// 1. Build the Responsibilities String safely
-			var res string
-
-			// Helper to wrap list items
-			wrapList := func(items []interface{}) {
-				for _, r := range items {
-					if str, ok := r.(string); ok {
-						// Wrap text to fit container width (minus 2 chars for bullet)
-						wrapped := lipgloss.NewStyle().Width(contentWidth - 2).Render(str)
-						res += fmt.Sprintf("• %s\n", wrapped)
-					}
-				}
-			}
-
-			if rawResp, ok := e["responsibilities"].(bson.A); ok {
-				// Convert bson.A to []interface{} logic
-				// (Since bson.A is literally []interface{}, we can loop directly)
-				for _, r := range rawResp {
-					if str, ok := r.(string); ok {
-						wrapped := lipgloss.NewStyle().Width(contentWidth - 2).Render(str)
-						res += fmt.Sprintf("• %s\n", wrapped)
-					}
-				}
-			} else if rawResp, ok := e["responsibilities"].([]interface{}); ok {
-				wrapList(rawResp)
-			}
-
-			// 2. Safe Field Access
-			role := utils.SafeString(e, "jobTitle")
-			company := utils.SafeString(e, "companyName")
-			startDate := utils.SafeString(e, "startDate")
-			if len(startDate) > 10 {
-				startDate = startDate[:10]
-			}
-			endDate := utils.SafeString(e, "endDate")
-			if len(endDate) > 10 {
-				endDate = endDate[:10]
-			}
-
-			isCurrent := false
-			if val, ok := e["isCurrent"].(bool); ok {
-				isCurrent = val
-			}
-			if isCurrent {
-				endDate = "Present"
-			}
-
-			// 3. Render Output
-			doc.WriteString(highlight.Render(fmt.Sprintf("%s @ %s", role, company)) + "\n")
-			doc.WriteString(subtle.Render(fmt.Sprintf("%s - %s", startDate, endDate)) + "\n\n")
-
-			if res != "" {
-				doc.WriteString(res + "\n")
-			}
-		}
+	case 2:
+		return m.renderPosition(contentWidth)
 
 	case 3: // Contact
 		doc.WriteString("Send me a message:\n\n")

@@ -10,8 +10,11 @@ import (
 // GetDatabaseURL constructs the database URL from environment variables
 var DATABASEURL string
 
+// add defauklt images url github user images Rtarun3606k
+var DEFAULTIMAGEURL = "https://avatars.githubusercontent.com/u/97576326?v=4"
+
 // all collection in modngodb v2
-var Collection = []string{"projects", "positions", "services"}
+var Collection = []string{"projects", "positions", "services", "blogs"}
 
 // LoadEnv loads environment variables from a .env file
 func LoadEnv() {
@@ -34,4 +37,3 @@ func getEnv(key, fallback string) string {
 	}
 	return exists
 }
-

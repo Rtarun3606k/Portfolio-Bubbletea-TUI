@@ -20,6 +20,7 @@ type Model struct {
 	Projects   []bson.M
 	Experience []bson.M
 	Services   []bson.M
+	Blogs      []bson.M
 
 	//add viewport
 	Viewport viewport.Model
