@@ -71,3 +71,59 @@ func GetALLFromCollection(dataBasename, CollectionName string) ([]bson.M, error)
 	// fmt.Println(results[0:3])
 	return results, nil
 }
+
+// ContactSchema matches your existing MongoDB documents
+type ContactSchema struct {
+	ID              bson.ObjectID `bson:"_id,omitempty"`
+	FirstName       string        `bson:"firstName"`
+	LastName        string        `bson:"lastName"`
+	Email           string        `bson:"email"`
+	Type            string        `bson:"type"`            // "professional" or "student"
+	Description     string        `bson:"description"`     // Maps to your Message input
+	ServiceId       *string       `bson:"serviceId"`       // Pointer allows sending 'null' to Mongo
+	AppointmentDate interface{}   `bson:"appointmentDate"` // Explicitly nil
+	AppointmentTime interface{}   `bson:"appointmentTime"` // Explicitly nil
+	Name            string        `bson:"name"`            // Computed (First + Last)
+	CreatedAt       time.Time     `bson:"createdAt"`
+}
+
+// InsertContact saves the form data to the "contacts" collection
+func InsertContact(firstName, lastName, email, userType, msg, serviceIdStr string) error {
+	// FIX: Use GetCollection or Client directly.
+	// Assuming your main database name is "projects" (based on your earlier code).
+	// If your DB name is "portfolio" or something else, change "projects" below.
+	coll := GetCollection("contact", "contact")
+
+	// 2. Handle Service ID (Convert empty string to nil)
+	var serviceId *string
+	if serviceIdStr != "" {
+		serviceId = &serviceIdStr
+	}
+
+	// 3. Prepare the Document
+	doc := ContactSchema{
+		FirstName:       firstName,
+		LastName:        lastName,
+		Email:           email,
+		Type:            userType,
+		Description:     msg,
+		ServiceId:       serviceId,
+		AppointmentDate: nil,
+		AppointmentTime: nil,
+		Name:            fmt.Sprintf("%s %s", firstName, lastName),
+		CreatedAt:       time.Now(),
+	}
+
+	// 4. Insert
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := coll.InsertOne(ctx, doc)
+	if err != nil {
+		log.Println("Error inserting contact:", err)
+		return err
+	}
+
+	log.Println("Contact saved successfully to MongoDB!")
+	return nil
+}

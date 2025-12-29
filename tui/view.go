@@ -41,10 +41,14 @@ func (m Model) generateConetnt(width int) string {
 	case 2:
 		return m.renderPosition(contentWidth)
 
-	case 3: // Contact
-		doc.WriteString("Send me a message:\n\n")
-		doc.WriteString(m.EmailInput.View() + "\n\n")
-		doc.WriteString(m.MsgInput.View())
+	case 3: // Servicese
+		return m.renderServices(width, false)
+
+	case 4:
+		return m.renderBlogsSection(width, false)
+
+	case 5: // Contact
+		return m.renderContactSection(width)
 	}
 
 	return doc.String()
@@ -76,7 +80,7 @@ func (m Model) View() string {
 	logo := logoStyle.Render()
 
 	// Tabs Style
-	tabs := []string{"  Home (H)", "  Projects (P)", "  Experience (E)", "  Contact (C)"}
+	tabs := []string{"  Home (H)", "  Projects (P)", "  Experience (E)", " Services (S)", "󰆉 Blogs (B)", "  Contact (C)"}
 	var renderedTabs []string
 
 	for i, t := range tabs {

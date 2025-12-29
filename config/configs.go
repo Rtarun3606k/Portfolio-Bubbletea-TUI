@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // GetDatabaseURL constructs the database URL from environment variables
@@ -15,6 +16,21 @@ var DEFAULTIMAGEURL = "https://avatars.githubusercontent.com/u/97576326?v=4"
 
 // all collection in modngodb v2
 var Collection = []string{"projects", "positions", "services", "blogs"}
+
+// Messages
+type DataMsg struct {
+	Type string // "projects", "experience", "services"
+	Data []bson.M
+}
+
+// Msg to signal the form submission result
+type FormSubmittedMsg struct {
+	Success bool
+}
+
+
+// DataMsg struct for passing data messages
+type AllMessages []DataMsg
 
 // LoadEnv loads environment variables from a .env file
 func LoadEnv() {

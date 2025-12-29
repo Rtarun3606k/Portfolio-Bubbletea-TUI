@@ -8,6 +8,235 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+func (m Model) renderProjectsSection(width int) string {
+	doc := strings.Builder{}
+	// --- SECTION 2: FEATURED PROJECTS (2 Cards) ---
+	title := sectionTitleStyle.Render("Featured Projects")
+	hintText := subtle.Align().UnsetBold().Render("Press P to view all projects")
+	doc.WriteString(title + "\n")
+
+	var projectCards []string
+
+	limitP := 3
+	if len(m.Projects) < limitP {
+		limitP = len(m.Projects)
+	}
+
+	// 1. Calculate Widths
+	// Card Width = (Total / 3) - Spacing
+	pCardWidth := (width / 2) - 2
+	if pCardWidth < 40 {
+		pCardWidth = 40
+	} // Safety minimum
+
+	// Image takes fixed 32 chars. Content gets the rest.
+	imageWidth := 32
+	contentWidth := pCardWidth - imageWidth - 6 // -6 for padding/gap
+
+	for i := 0; i < limitP; i++ {
+		p := m.Projects[i]
+
+		name := utils.SafeString(p, "title")
+		desc := utils.SafeString(p, "description")
+		githubLink := utils.SafeString(p, "githubUrl")
+		liveLink := utils.SafeString(p, "liveUrl")
+
+		// --- IMAGE HANDLING ---
+		logoStr := ""
+		if val, ok := p["ascii_art"].(string); ok && val != "" {
+			logoStr = val
+		} else if url, ok := p["imageUrl"].(string); ok && url != "" {
+			logoStr = "Loading..."
+		} else {
+			logoStr = "   No\n  Image"
+		}
+
+		// 2. TRUNCATE IMAGE HEIGHT (The Fix)
+		// Split lines, take max 10 lines, join back
+		lines := strings.Split(logoStr, "\n")
+		if len(lines) > 10 {
+			logoStr = strings.Join(lines[:10], "\n")
+		}
+
+		// Render Image Box
+		logoBox := lipgloss.NewStyle().
+			Width(imageWidth).
+			Align(lipgloss.Center).            // Center the ASCII horizontally in its box
+			Foreground(lipgloss.Color("240")). // Grey color for image
+			Render(logoStr)
+
+		// --- CONTENT HANDLING ---
+		if len(desc) > 60 {
+			desc = desc[:57] + "..."
+		}
+
+		// Wrap description to fit the content column specifically
+		wrappedDesc := lipgloss.NewStyle().Width(contentWidth).Render(desc)
+
+		// Create Links Row
+		links := ""
+		if githubLink != "" {
+			links += utils.MakeLink(" GitHub", githubLink) + "  "
+		}
+		if liveLink != "" {
+			links += utils.MakeLink(" Live", liveLink)
+		}
+
+		contentBox := lipgloss.NewStyle().
+			Width(contentWidth).
+			Render(fmt.Sprintf("%s\n\n%s\n\n%s",
+				highlight.Render(name),
+				wrappedDesc,
+				subtle.Render(links),
+			))
+
+		// 3. JOIN COLUMNS
+		// Join Image + Gap + Content
+		gridOf2 := lipgloss.JoinHorizontal(lipgloss.Top, logoBox, "   ", contentBox)
+
+		// 4. RENDER CARD
+		card := cardStyle.
+			Width(pCardWidth).
+			Height(12). // Fixed height for uniformity
+			Render(gridOf2)
+
+		projectCards = append(projectCards, card)
+	}
+
+	// Join all cards horizontally
+	doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, projectCards...) + "\n")
+
+	// Hint Text
+	hintStyle := lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Foreground(lipgloss.Color("240"))
+	hintText = hintStyle.Render(hintText)
+
+	doc.WriteString("\n" + hintText + "\n")
+	return doc.String()
+}
+
+func (m Model) renderServices(width int, limitOfCards bool) string {
+	doc := strings.Builder{}
+
+	// 1. Title
+	doc.WriteString(sectionTitleStyle.Render("Services Provided") + "\n\n")
+
+	// 2. Limit to 4 Cards
+	var limitS int
+
+	if limitOfCards {
+		limitS = 4
+	} else {
+		limitS = len(m.Services)
+	}
+
+	if len(m.Services) < limitS {
+		limitS = len(m.Services)
+	}
+
+	// 3. Layout Dimensions
+	// We want 2 cards per row on large screens, or 1 card on small screens
+	isTwoColumn := width > 100
+	var cardWidth int
+
+	if isTwoColumn {
+		cardWidth = (width / 2) - 4 // Split width minus gaps
+	} else {
+		cardWidth = width - 4 // Full width minus margins
+	}
+
+	var cards []string
+
+	// 4. Style Definitions
+	// The outer box for the card
+	serviceCardStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("63")). // Purple border
+		Padding(1).
+		MarginBottom(1).
+		Width(cardWidth)
+
+	// The Icon Box Style
+	iconStyle := lipgloss.NewStyle().
+		Width(6).
+		Align(lipgloss.Center).
+		Foreground(lipgloss.Color("205")) // Pink Icon
+
+	// 5. Loop and Build Cards
+	for i := 0; i < limitS; i++ {
+		s := m.Services[i]
+
+		// Data Extraction
+		title := utils.SafeString(s, "title")
+		desc := utils.SafeString(s, "description")
+		price := utils.SafeString(s, "price")
+		timeframe := utils.SafeString(s, "timeframe")
+		category := utils.SafeString(s, "category")
+
+		// Icon
+		iconChar := utils.GetIcon(category)
+		iconBox := iconStyle.Render(iconChar)
+
+		// Content Calculation
+		contentWidth := cardWidth - 10 // Card width - Icon width - Padding
+		if len(desc) > 80 {
+			desc = desc[:77] + "..."
+		}
+
+		// Build the Text Block
+		contentBlock := lipgloss.NewStyle().Width(contentWidth).Render(fmt.Sprintf(
+			"%s\n%s\n\n%s",
+			highlight.Render(title),
+			lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Render(desc),
+			subtle.Render(fmt.Sprintf("%s • %s", price, timeframe)),
+		))
+
+		// Join Icon + Content
+		// using Top alignment ensures icon stays at the top if text is long
+		row := lipgloss.JoinHorizontal(lipgloss.Top, iconBox, "  ", contentBlock)
+
+		// Render the full card
+		cards = append(cards, serviceCardStyle.Render(row))
+	}
+
+	// 6. Layout Composition (Grid vs List)
+	if isTwoColumn {
+		// If we have an even number of cards, we can pair them up
+		// This is a simple implementation: just JoinHorizontal pairs
+		var rows []string
+		for i := 0; i < len(cards); i += 2 {
+			if i+1 < len(cards) {
+				// Pair of cards
+				rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Top, cards[i], "  ", cards[i+1]))
+			} else {
+				// Single card leftover
+				rows = append(rows, cards[i])
+			}
+		}
+		doc.WriteString(lipgloss.JoinVertical(lipgloss.Left, rows...) + "\n")
+	} else {
+		// Standard vertical list
+		doc.WriteString(lipgloss.JoinVertical(lipgloss.Left, cards...) + "\n")
+	}
+
+	// 7. Add Hint Text
+	hintStyle := lipgloss.NewStyle().
+		Width(width).
+		Align(lipgloss.Center).
+		Foreground(lipgloss.Color("240")).
+		MarginTop(1)
+	if limitOfCards {
+		doc.WriteString(hintStyle.Render("For more services navigate to (S) .And for more information reach out via Contact (C) to discuss these services"))
+		doc.WriteString("\n")
+	} else {
+
+		doc.WriteString(hintStyle.Render("for more information reach out via Contact (C) to discuss these services"))
+	}
+	doc.WriteString("\n")
+
+	return doc.String()
+}
+
+// main rendering function for Home tab
 func (m Model) renderHome(width int) string {
 	doc := strings.Builder{}
 
@@ -154,67 +383,18 @@ Specialized in Python, JS, and Cloud with 1+ years exp.`)
 
 	//projects section ----------------------------------------------------------------------------------------
 	// --- SECTION 2: FEATURED PROJECTS (3 Cards) ---
-	doc.WriteString(sectionTitleStyle.Render("Featured Projects") + "\n")
-
-	var projectCards []string
-	// Limit to first 3 projects (safety check)
-	limitP := 3
-	if len(m.Projects) < limitP {
-		limitP = len(m.Projects)
-	}
-
-	// Calculate card width (Total / 3 minus margins)
-	pCardWidth := (width / 3) - 4
-
-	for i := 0; i < limitP; i++ {
-		p := m.Projects[i]
-		name := utils.SafeString(p, "title")
-		desc := utils.SafeString(p, "description")
-
-		// Truncate description to keep cards even
-		if len(desc) > 50 {
-			desc = desc[:47] + "..."
-		}
-
-		content := fmt.Sprintf("%s\n\n%s", highlight.Render(name), desc)
-
-		card := cardStyle.Copy().
-			Width(pCardWidth).
-			Height(8).
-			Render(content)
-
-		projectCards = append(projectCards, card)
-	}
+	doc.WriteString(m.renderProjectsSection(width))
 	// Join all project cards horizontally
-	doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, projectCards...) + "\n")
 
-	// --- SECTION 3: SERVICES (3 Cards) ---
-	doc.WriteString(sectionTitleStyle.Render("What I Do") + "\n")
+	//section for blogs
+	doc.WriteString("\n")
+	// --- SECTION 3: LATEST ARTICLES (3 Cards) ---
+	doc.WriteString(m.renderBlogsSection(width, true))
+	// Join all blog cards horizontally
+	doc.WriteString("\n")
 
-	var serviceCards []string
-	limitS := 3
-	if len(m.Services) < limitS {
-		limitS = len(m.Services)
-	}
-
-	sCardWidth := (width / 3) - 4
-
-	for i := 0; i < limitS; i++ {
-		s := m.Services[i]
-		title := utils.SafeString(s, "title")
-		price := utils.SafeString(s, "price")
-
-		content := fmt.Sprintf("%s\n\nStarting at %s", highlight.Render(title), subtle.Render(price))
-
-		card := cardStyle.Copy().
-			Width(sCardWidth).
-			Height(6).
-			Render(content)
-
-		serviceCards = append(serviceCards, card)
-	}
-	doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, serviceCards...) + "\n")
-
+	//section 3: services offered --------------------------------------------------------------------------------
+	doc.WriteString(m.renderServices(width, true))
 	// --- SECTION 4: CONTACT CTA ---
 	// A simple banner at the bottom
 	cta := lipgloss.NewStyle().

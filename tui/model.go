@@ -6,48 +6,79 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/ssh"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type Model struct {
 	Width, Height int
-	ActiveTab     int // 0: Home, 1: Projects, 2: Experience, 3: Contact
+	ActiveTab     int // 0: Home, ..., 5: Contact
 	Loading       bool
 	Spinner       spinner.Model
 
-	// Data Storage (Raw BSON maps)
+	// Data
 	Projects   []bson.M
 	Experience []bson.M
 	Services   []bson.M
 	Blogs      []bson.M
 
-	//add viewport
 	Viewport viewport.Model
 
-	// Contact Form
-	EmailInput textinput.Model
-	MsgInput   textarea.Model
+	// --- CONTACT FORM STATE ---
+	FirstNameInput textinput.Model
+	LastNameInput  textinput.Model
+	EmailInput     textinput.Model
+	MsgInput       textarea.Model
+
+	UserType        string // "Professional" or "Student"
+	SelectedService int    // Index of m.Services
+	FocusIndex      int    // 0-6
+
+	// Contact Specific States
+	ContactLoading bool // True when "Submit" is clicked
+	FormSuccess    bool // True after successful submit
 }
 
 func InitialModel(w, h int) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63")) // Purple spinner
 
-	ti := textinput.New()
-	ti.Placeholder = "your@email.com"
-	ti.Focus()
+	// 1. Initialize Inputs
+	fn := textinput.New()
+	fn.Placeholder = "Jane"
+	fn.CharLimit = 30
+	fn.Focus() // Start focused
+
+	ln := textinput.New()
+	ln.Placeholder = "Doe"
+	ln.CharLimit = 30
+
+	email := textinput.New()
+	email.Placeholder = "your.email@example.com"
+	email.CharLimit = 50
 
 	ta := textarea.New()
-	ta.Placeholder = "Your message..."
+	ta.Placeholder = "Tell me about your project..."
+	ta.CharLimit = 500
+	ta.SetHeight(5)
+	ta.ShowLineNumbers = false
 
 	return Model{
-		Width:      w,
-		Height:     h,
-		Loading:    true,
-		Spinner:    s,
-		EmailInput: ti,
-		MsgInput:   ta,
+		Width:   w,
+		Height:  h,
+		Loading: true,
+		Spinner: s,
+		// Contact Init
+		FirstNameInput: fn,
+		LastNameInput:  ln,
+		EmailInput:     email,
+		MsgInput:       ta,
+		UserType:       "Professional",
+		FocusIndex:     0,
+		ContactLoading: false,
+		FormSuccess:    false,
 	}
 }
 

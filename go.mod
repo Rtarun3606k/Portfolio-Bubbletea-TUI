@@ -10,6 +10,7 @@ require (
 	github.com/charmbracelet/wish v1.4.7
 	github.com/joho/godotenv v1.5.1
 	github.com/qeesung/image2ascii v1.0.1
+	go.mongodb.org/mongo-driver v1.17.6
 	go.mongodb.org/mongo-driver/v2 v2.4.1
 )
 

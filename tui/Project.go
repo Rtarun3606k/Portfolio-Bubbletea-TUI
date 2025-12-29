@@ -71,16 +71,32 @@ func (m Model) renderProject(width int) string {
 		}
 
 		// B. BUILD LEFT COLUMN (ASCII Art)
-		imageStr := "   No\n  Image" // Default placeholder
-		if val, ok := p["ascii_art"].(string); ok && val != "" {
-			imageStr = val
+	fallbackImageStyle := lipgloss.NewStyle().
+		Width(cardWidth-4).
+		Height(5).
+		Align(lipgloss.Center, lipgloss.Center).
+		Background(lipgloss.Color("236")). // Dark Grey bg
+		Foreground(lipgloss.Color("245"))  // Light Grey text
+
+
+		imgContent := utils.SafeString(p, "ascii_art")
+
+		var imgBox string
+
+		if imgContent != "" {
+			imgBox = lipgloss.NewStyle().
+				Align(lipgloss.Center).
+				Render(imgContent)
+		} else {
+			// Fallback
+			imgBox = fallbackImageStyle.Render("📰\nBlog Post")
 		}
 
 		// Vertically center the image roughly if description is long
 		leftCol := lipgloss.NewStyle().
 			Width(imageWidth).
 			Align(lipgloss.Center).
-			Render(imageStr)
+			Render(imgBox)
 
 		// C. BUILD RIGHT COLUMN
 
