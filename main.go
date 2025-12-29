@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,12 +12,16 @@ import (
 
 	"portfolioTUI/config"
 	"portfolioTUI/database"
-	"portfolioTUI/tui" // Import your local TUI package
+	"portfolioTUI/tui"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
-	bm "github.com/charmbracelet/wish/bubbletea"
-	lm "github.com/charmbracelet/wish/logging"
+	"github.com/charmbracelet/wish/activeterm"
+	"github.com/charmbracelet/wish/bubbletea"
+	"github.com/charmbracelet/wish/logging"
+	"github.com/muesli/termenv"
 )
 
 const (
@@ -25,43 +30,56 @@ const (
 )
 
 func main() {
-	// 1. Setup Infrastructure
+	// 1. Infrastructure
 	config.LoadEnv()
 	database.ConnectToDataBase()
+	go tui.GetOrFetchData()
 
-	// 2. Configure SSH Server
+	// 2. SSH Keys
+	keyPath := ".ssh/term_info_ed25519"
+	if _, err := os.Stat(".ssh"); os.IsNotExist(err) {
+		_ = os.Mkdir(".ssh", 0700)
+	}
+
+	// 3. Configure Server
 	s, err := wish.NewServer(
-		wish.WithAddress(fmt.Sprintf("%s:%d", host, port)),
-		wish.WithHostKeyPath(".ssh/term_info_ed25519"),
+		wish.WithAddress(net.JoinHostPort(host, fmt.Sprintf("%d", port))),
+		wish.WithHostKeyPath(keyPath),
 		wish.WithMiddleware(
-			bm.Middleware(tui.TeaHandler), // Connects Bubble Tea to SSH
-			lm.Middleware(),               // Adds logging
+			// --- SIMPLIFIED COLOR FIX ---
+			bubbletea.Middleware(func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
+				// 1. Force Lipgloss to use 256 colors
+				// This overrides the auto-detection which fails over SSH
+				lipgloss.SetColorProfile(termenv.ANSI256)
+
+				// 2. Call your standard handler
+				return tui.TeaHandler(s)
+			}),
+			activeterm.Middleware(),
+			logging.Middleware(),
 		),
 	)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	// 3. Handle Graceful Shutdown
+	// 4. Start
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	log.Printf("Starting SSH server on %s:%d", host, port)
 
-	fmt.Printf("Starting SSH server on %s:%d\n", host, port)
-
-	// 4. Start Server in a Goroutine
 	go func() {
 		if err = s.ListenAndServe(); err != nil && err != ssh.ErrServerClosed {
 			log.Fatalln(err)
 		}
 	}()
 
-	// 5. Block until Ctrl+C is pressed
 	<-done
-
-	fmt.Println("Stopping SSH server...")
+	log.Println("Stopping SSH server...")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := s.Shutdown(ctx); err != nil {
 		log.Fatalln(err)
 	}
 }
+

@@ -12,11 +12,22 @@ import (
 )
 
 func (m Model) Init() tea.Cmd {
-	// Fetch all 3 collections in parallel
-	return tea.Batch(
-		m.Spinner.Tick,
-		utils.FetchData(),
-	)
+	var cmds []tea.Cmd
+	cmds = append(cmds, m.Spinner.Tick)
+
+	// Trigger image generation for the data we just loaded
+	// (Projects, Blogs, etc. need their ASCII art generated now)
+	if len(m.Projects) > 0 {
+		cmds = append(cmds, utils.GenerateImagesCmds("projects", m.Projects)...)
+	}
+	if len(m.Experience) > 0 {
+		cmds = append(cmds, utils.GenerateImagesCmds("positions", m.Experience)...)
+	}
+	if len(m.Blogs) > 0 {
+		cmds = append(cmds, utils.GenerateImagesCmds("blogs", m.Blogs)...)
+	}
+
+	return tea.Batch(cmds...)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

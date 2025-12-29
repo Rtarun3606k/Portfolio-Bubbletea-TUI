@@ -68,16 +68,7 @@ func (m Model) renderBlogsSection(width int, limitOfCards bool) string {
 		author := utils.SafeString(b, "author")
 		views := utils.SafeString(b, "views")
 		dateStr := utils.SafeDate(b, "createdAt")
-
-		// Debug print (Use %v or %s, not %T for values)
-		fmt.Println("Blog Info:", dateStr, titleVal)
-		dateS := b["createdAt"]
-
-		fmt.Printf("Blog Views: %T", dateS)
-
-		// Debugging ID extraction
 		id = utils.SafeID(b, "_id")
-		fmt.Println("Blog ID:", id)
 
 		liveLink := fmt.Sprintf("https://tarunnayaka.me/Blog/%s", id)
 

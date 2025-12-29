@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"portfolioTUI/config"
+
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -40,7 +42,7 @@ type Model struct {
 	FormSuccess    bool // True after successful submit
 }
 
-func InitialModel(w, h int) Model {
+func InitialModel(w, h int, data config.AllMessages) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63")) // Purple spinner
@@ -65,7 +67,7 @@ func InitialModel(w, h int) Model {
 	ta.SetHeight(5)
 	ta.ShowLineNumbers = false
 
-	return Model{
+	model := Model{
 		Width:   w,
 		Height:  h,
 		Loading: true,
@@ -80,9 +82,24 @@ func InitialModel(w, h int) Model {
 		ContactLoading: false,
 		FormSuccess:    false,
 	}
+
+	// 3. LOAD THE PRE-FETCHED DATA IMMEDIATELY
+	for _, msg := range data {
+		model = updateModelWithData(model, msg)
+	}
+
+	// Data is ready, stop loading spinner logic (mostly)
+	model.Loading = false
+
+	return model
+
 }
 
 func TeaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-	pty, _, _ := s.Pty()
-	return InitialModel(pty.Window.Width, pty.Window.Height), []tea.ProgramOption{tea.WithAltScreen()}
+	data := GetOrFetchData()
+	pty, _, active := s.Pty()
+	if !active {
+		return nil, nil
+	}
+	return InitialModel(pty.Window.Width, pty.Window.Height, data), []tea.ProgramOption{tea.WithAltScreen()}
 }
